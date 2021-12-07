@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:bgapp/const.dart';
 import 'package:contacts_service/contacts_service.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -32,12 +33,14 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> {
   List<Contact> contacts = [];
+  Set<String> contactNumbers = {};
+  StorageProvider storageProvider = new StorageProvider();
 
   @override
   void initState() {
-    // TODO: implement initState
     super.initState();
     getAllContacts();
+    print(json.encode(storageProvider.getContactMap()));
   }
 
   getAllContacts() async {
@@ -45,23 +48,42 @@ class _MyHomePageState extends State<MyHomePage> {
     setState(() {
       contacts = _contacts;
       for (var cnct in contacts) {
-        var num = cnct.phones?.elementAt(0).value?.replaceAll(RegExp("[^0-9]"), "").toString();
-
+        List<Item> _items = cnct.phones ?? [];
+        for (var phone in _items) {
+          String num = phone
+                  .value
+                  ?.replaceAll(RegExp("[^0-9]"), "")
+                  .toString() ??
+              "";
+          print(num);
+          // if length of num is >= 10 then print last 10 digits
+          if ((num.length) >= 10 && !storageProvider.checkContact(num)) {
+            num = num.substring(num.length - 10);
+            contactNumbers.add(num);
+          }
+        }
       }
-      getBGAppUsers();
+      // Call API
+      if (contactNumbers.length > 0) {
+        print("Hello : "+contactNumbers.length.toString());
+        print(contactNumbers.join(","));
+        getBGAppUsers();
+      }
     });
   }
 
   getBGAppUsers() async {
     var url = Uri.parse('https://25fd-110-227-92-109.ngrok.io/api');
-    var body = json.encode({
-      "userId": "BG001",
-      "contacts": ["8847872656", "9191875678"]
-    });
+    var body = json.encode({"userId": "BG001", "contacts": contactNumbers.toList()});
     http.Response response = await http
         .post(url, body: body, headers: {'Content-type': 'application/json'});
     print('Response status: ${response.statusCode}');
-    print('Response body: ${response.body}');
+    // print('Response body: ${response.body}');
+    var data = json.decode(response.body);
+    data['data'].forEach((element) {
+      // if (element['hasAccount'] == true) {
+      storageProvider.addContact(element['phone'], json.encode(element));
+    });
   }
 
   @override
