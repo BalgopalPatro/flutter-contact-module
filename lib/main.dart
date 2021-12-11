@@ -57,7 +57,7 @@ class _MyHomePageState extends State<MyHomePage> {
               "";
           print(num);
           // if length of num is >= 10 then print last 10 digits
-          if ((num.length) >= 10 && !storageProvider.checkContact(num)) {
+          if ((num.length) >= 10 && !storageProvider.checkContact(num.substring(num.length - 10))) {
             num = num.substring(num.length - 10);
             contactNumbers.add(num);
           }
